@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"github.com/boltdb/bolt"
-	"github.com/xlab/ziptools"
+	"github.com/missionMeteora/ziptools"
 )
 
 var (
