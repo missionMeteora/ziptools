@@ -18,7 +18,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/missionMeteora/bolty-mdb"
+	"github.com/boltdb/bolt"
 	"github.com/missionMeteora/ziptools"
 )
 
@@ -50,14 +50,14 @@ func main() {
 }
 
 type DB struct {
-	db *bmdb.DB
+	db *bolt.DB
 }
 
 func run() (err error) {
 	db := new(DB)
 
 	// open the DB file
-	if db.db, err = bmdb.Open(dbPath, 0644, &bmdb.Options{MapSize: 1 << 31, MaxDBs: 1024}); err != nil {
+	if db.db, err = bolt.Open(dbPath, 0644, nil); err != nil {
 		return
 	}
 	defer db.db.Close()
@@ -106,7 +106,7 @@ func (d *DB) addLocations(csv *csv.Reader) (n int, err error) {
 	if err != nil {
 		return
 	}
-	var locations *bmdb.Bucket
+	var locations *bolt.Bucket
 	if locations, err = tx.CreateBucketIfNotExists(locationsBuck); err != nil {
 		return
 	}
@@ -147,7 +147,7 @@ func (d *DB) addZips(csv *csv.Reader) (n int, err error) {
 	if err != nil {
 		return
 	}
-	var zips *bmdb.Bucket
+	var zips *bolt.Bucket
 	if zips, err = tx.CreateBucketIfNotExists(zipsBuck); err != nil {
 		return
 	}
@@ -182,9 +182,9 @@ func (d *DB) addSubstrings() (err error) {
 		return
 	}
 	// create buckets
-	var cities *bmdb.Bucket
-	var subcities *bmdb.Bucket
-	var subzips *bmdb.Bucket
+	var cities *bolt.Bucket
+	var subcities *bolt.Bucket
+	var subzips *bolt.Bucket
 
 	if cities, err = tx.CreateBucketIfNotExists(citiesBuck); err != nil {
 		return
@@ -231,7 +231,7 @@ func (d *DB) addSubstrings() (err error) {
 	}()
 
 	// Iterate over zip codes in read-only tx
-	if err = d.db.View(func(tx *bmdb.Tx) error {
+	if err = d.db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(zipsBuck); b != nil {
 			err := b.ForEach(func(k []byte, v []byte) error {
 				select {
@@ -245,7 +245,7 @@ func (d *DB) addSubstrings() (err error) {
 			close(pairs)
 			return err
 		}
-		return bmdb.ErrBucketNotFound
+		return bolt.ErrBucketNotFound
 	}); err != nil {
 		return
 	}
@@ -263,8 +263,8 @@ func (d *DB) addLocodes() (err error) {
 	if err != nil {
 		return
 	}
-	var locodes *bmdb.Bucket
-	var sublocodes *bmdb.Bucket
+	var locodes *bolt.Bucket
+	var sublocodes *bolt.Bucket
 	if locodes, err = tx.CreateBucketIfNotExists(locodesBuck); err != nil {
 		return
 	}
@@ -297,7 +297,7 @@ func (d *DB) addLocodes() (err error) {
 	}()
 
 	// Iterate over locations in read-only tx
-	if err = d.db.View(func(tx *bmdb.Tx) error {
+	if err = d.db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(locationsBuck); b != nil {
 			err := b.ForEach(func(k []byte, v []byte) error {
 				select {
@@ -311,7 +311,7 @@ func (d *DB) addLocodes() (err error) {
 			close(pairs)
 			return err
 		}
-		return bmdb.ErrBucketNotFound
+		return bolt.ErrBucketNotFound
 	}); err != nil {
 		return
 	}
@@ -325,7 +325,7 @@ func (d *DB) addLocodes() (err error) {
 
 // putSubstringZipList generates all possible substrings (prepend, append),
 // and puts them to bucket as keys to ZipLists.
-func (d *DB) putSubstringZipList(buck *bmdb.Bucket, str string, zip ziptools.Zip) error {
+func (d *DB) putSubstringZipList(buck *bolt.Bucket, str string, zip ziptools.Zip) error {
 	seen := make(map[string]struct{})
 	put := func(substr string) error {
 		if _, ok := seen[substr]; ok || len(substr) < 1 {
@@ -355,7 +355,7 @@ func (d *DB) putSubstringZipList(buck *bmdb.Bucket, str string, zip ziptools.Zip
 
 // putSubstringLocodeList generates all possible substrings (prepend, append),
 // and puts them to bucket as keys to LocodeList.
-func (d *DB) putSubstringLocodeList(buck *bmdb.Bucket, str string, loc ziptools.Locode) error {
+func (d *DB) putSubstringLocodeList(buck *bolt.Bucket, str string, loc ziptools.Locode) error {
 	seen := make(map[string]struct{})
 	put := func(substr string) error {
 		if _, ok := seen[substr]; ok || len(substr) < 1 {
@@ -384,11 +384,11 @@ func (d *DB) putSubstringLocodeList(buck *bmdb.Bucket, str string, loc ziptools.
 }
 
 // Gets a ZipList by key from a bucket.
-func (d *DB) getList(buck *bmdb.Bucket, key []byte) (list ziptools.ZipList) {
+func (d *DB) getList(buck *bolt.Bucket, key []byte) (list ziptools.ZipList) {
 	return list.FromBytes(buck.Get(key))
 }
 
 // Gets a LocodeList by key from a bucket.
-func (d *DB) getListL(buck *bmdb.Bucket, key []byte) (list ziptools.LocodeList) {
+func (d *DB) getListL(buck *bolt.Bucket, key []byte) (list ziptools.LocodeList) {
 	return list.FromBytes(buck.Get(key))
 }

@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/missionMeteora/bolty-mdb"
+	"github.com/boltdb/bolt"
 )
 
 var (
@@ -19,7 +19,7 @@ var (
 
 // DB abstracts database access.
 type DB struct {
-	db *bmdb.DB
+	db *bolt.DB
 }
 
 // Open opens a Bolt database from a file if it exists.
@@ -28,7 +28,7 @@ func Open(path string) (db *DB, err error) {
 		return
 	}
 	db = new(DB)
-	db.db, err = bmdb.Open(path, 0644, nil)
+	db.db, err = bolt.Open(path, 0644, nil)
 	return
 }
 
@@ -39,12 +39,12 @@ func (d *DB) Close() {
 // GetCity gets a city that is assigned to the specified zip code.
 // This methods looks for an exact match.
 func (d *DB) GetCity(z Zip) (city string, err error) {
-	err = d.db.View(func(tx *bmdb.Tx) error {
+	err = d.db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(zipsBuck); b != nil {
 			city = string(b.Get(z.Bytes()))
 			return nil
 		}
-		return bmdb.ErrBucketNotFound
+		return bolt.ErrBucketNotFound
 	})
 	return
 }
@@ -53,12 +53,12 @@ func (d *DB) GetCity(z Zip) (city string, err error) {
 // This methods looks for an exact match.
 func (d *DB) GetLocation(l Locode) (loc *Location, err error) {
 	loc = &Location{}
-	err = d.db.View(func(tx *bmdb.Tx) error {
+	err = d.db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(locationsBuck); b != nil {
 			loc.FromBytes(b.Get(l.Bytes()))
 			return nil
 		}
-		return bmdb.ErrBucketNotFound
+		return bolt.ErrBucketNotFound
 	})
 	return
 }
@@ -66,12 +66,12 @@ func (d *DB) GetLocation(l Locode) (loc *Location, err error) {
 // Get a list of zip codes in the specified city. This methods looks
 // for an exact match.
 func (d *DB) GetZips(city string) (zips ZipList, err error) {
-	err = d.db.View(func(tx *bmdb.Tx) error {
+	err = d.db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(citiesBuck); b != nil {
 			zips.FromBytes(b.Get([]byte(city)))
 			return nil
 		}
-		return bmdb.ErrBucketNotFound
+		return bolt.ErrBucketNotFound
 	})
 	return
 }
@@ -79,19 +79,19 @@ func (d *DB) GetZips(city string) (zips ZipList, err error) {
 // Get a list of locodes for the specified city. This methods looks
 // for an exact match.
 func (d *DB) GetLocodes(city string) (locodes LocodeList, err error) {
-	err = d.db.View(func(tx *bmdb.Tx) error {
+	err = d.db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(locodesBuck); b != nil {
 			locodes.FromBytes(b.Get([]byte(city)))
 			return nil
 		}
-		return bmdb.ErrBucketNotFound
+		return bolt.ErrBucketNotFound
 	})
 	return
 }
 
 // Find all cities that match the given substring.
 func (d *DB) FindCities(citypart string) (cities CityList, err error) {
-	err = d.db.View(func(tx *bmdb.Tx) error {
+	err = d.db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(subCitiesBuck); b != nil {
 			var list ZipList
 			citypart = strings.ToLower(citypart)
@@ -105,32 +105,32 @@ func (d *DB) FindCities(citypart string) (cities CityList, err error) {
 			}
 			return nil
 		}
-		return bmdb.ErrBucketNotFound
+		return bolt.ErrBucketNotFound
 	})
 	return
 }
 
 // Find all locodes by a given substring of a city name.
 func (d *DB) FindLocodes(citypart string) (locodes LocodeList, err error) {
-	err = d.db.View(func(tx *bmdb.Tx) error {
+	err = d.db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(subLocodesBuck); b != nil {
 			citypart = strings.ToLower(citypart)
 			locodes.FromBytes(b.Get([]byte(citypart)))
 			return nil
 		}
-		return bmdb.ErrBucketNotFound
+		return bolt.ErrBucketNotFound
 	})
 	return
 }
 
 // Find all zip codes that match the given substring.
 func (d *DB) FindZips(zippart string) (zips ZipList, err error) {
-	err = d.db.View(func(tx *bmdb.Tx) error {
+	err = d.db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(subZipsBuck); b != nil {
 			zips.FromBytes(b.Get([]byte(zippart)))
 			return nil
 		}
-		return bmdb.ErrBucketNotFound
+		return bolt.ErrBucketNotFound
 	})
 	return
 }
